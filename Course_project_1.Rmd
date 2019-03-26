@@ -1,0 +1,69 @@
+---
+title: "Activity monitoring"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r loadData}
+activity <- read.csv(file= "C:/Users/Jinny Qu/Desktop/R Programming/activity.csv", header=TRUE, sep = ",")
+```
+
+### What is mean total number of steps taken per day
+
+```{r Q1}
+TotalSteps <- tapply(activity$steps, activity$date, sum)
+hist(TotalSteps, main = "Histogram for total number of steps per day", xlab = "Total Steps", border = "black", col = "orange", ylim = c(0,30))
+```
+
+#### mean and median of the total number of steps taken per day
+```{r mean}
+meanSteps <- tapply(activity$steps, activity$date, mean, na.rm = TRUE)
+medianSteps <- tapply(activity$steps, activity$date, median, na.rm = TRUE)
+cbind(meanSteps, medianSteps)
+```
+### What is the average daily activity pattern?
+
+```{r Q2}
+activity[,"interval"] <- as.factor(activity[, "interval"])
+averageAllDays <- tapply(activity$steps, activity$interval, mean, na.rm = TRUE)
+plot(row.names(averageAllDays), averageAllDays, type = "l", xlim = c(0,2400), ylim = c(0,250), xlab = "5-minute Interval", ylab = "Average steps taken across all days")
+```
+
+#### The the 5-minute interval that contains the max number of steps
+```{r max}
+averageAllDays[which(averageAllDays == max(averageAllDays))]
+```
+### Imputing missing values
+```{r Q3}
+missingValues <- length(is.na(activity$steps))
+#Total number of missing values
+missingValues
+
+averageAllDays <- as.data.frame.table(averageAllDays)
+colnames(averageAllDays) <- c("interval", "averageAllDays")
+#I replaced the NA values with the mean for that 5-minute interval
+stepsNoNA <- ifelse(is.na(activity$steps), replace(activity$steps, activity$interval %in% averageAllDays$interval, averageAllDays$averageAllDays), activity$steps)
+df <- cbind(activity, stepsNoNA)
+activityNoNA <- df[, c(2,3,4)]#new dataset without NAs
+TotalStepsNNA <- tapply(activityNoNA$steps, activityNoNA$date, sum)
+hist(TotalStepsNNA, main = "Histogram for total number of steps per day without NAs", xlab = "Total Steps", border = "black", col = "purple", ylim = c(0,35))
+meanStepsNNA <- tapply(activityNoNA$steps, activityNoNA$date, mean, na.rm = TRUE)
+medianStepsNNA <- tapply(activityNoNA$steps, activityNoNA$date, median, na.rm = TRUE)
+cbind(meanStepsNNA, medianStepsNNA)# By imputing missing data, there are now means and medians of the days where there was no data. Means and medians of other days stay the same.
+```
+
+
+### Are there differences in activity patterns between weekdays and weekends?
+
+```{r Q4}
+a <- with(activityNoNA, tapply(stepsNoNA, interval, mean))
+activityNoNA$date <- as.Date(activityNoNA$date)
+activityNoNA$dayofweek <- ifelse(weekdays(activityNoNA$date) %in% c("Saturday", "Sunday"), "weekend", "weekday")
+activityNoNA$dayofweek <- as.factor(activityNoNA$dayofweek)
+b <- aggregate(stepsNoNA ~ interval + dayofweek, data = activityNoNA, mean)
+library(lattice)
+xyplot(stepsNoNA~interval| dayofweek, data = b, layout = c(1,2), type = "l", xlab = "5-minute interval") 
+```
